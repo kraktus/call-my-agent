@@ -1,13 +1,4 @@
-#!/usr/bin/env -S uv run --script
-#
-# /// script
-# requires-python = ">=3.8"
-# dependencies = [
-#     "python-dotenv",
-#     "requests",
-#     "docker",
-# ]
-# ///
+#!/usr/bin/python3
 #
 # coding: utf-8
 # Licence: GNU AGPLv3
@@ -23,8 +14,6 @@ import logging.handlers
 import os
 import sys
 
-import requests
-
 from argparse import RawTextHelpFormatter
 from collections import deque
 from dataclasses import dataclass
@@ -33,31 +22,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, List, Union, Tuple
 from urllib3.util.retry import Retry
 
-from dotenv import load_dotenv
-from requests.adapters import HTTPAdapter
-
-# Import our new agent logic
-from agent_logic import run_agent
-
-#############
-# Constants #
-#############
-
-load_dotenv()
-
-SCRIPT_DIR = Path(__file__).resolve(strict=True).parent
-LOG_PATH = f"{__file__}.log"
-RETRY_STRAT = Retry(
-    total=5,
-    backoff_factor=1,
-    status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=["GET"]
-)
-ADAPTER = HTTPAdapter(max_retries=RETRY_STRAT)
-
-########
-# Logs #
-########
+from .docker import main as run_agent
+from . import LOG_PATH
 
 log = logging.getLogger(__file__)
 log.setLevel(logging.DEBUG)
@@ -83,10 +49,11 @@ log.addHandler(handler_2)
 class Req:
 
     def __init__(self) -> None:
-        http = requests.Session()
-        http.mount("https://", ADAPTER)
-        http.mount("http://", ADAPTER)
-        self.http = http
+        pass
+        # http = requests.Session()
+        # http.mount("https://", ADAPTER)
+        # http.mount("http://", ADAPTER)
+        # self.http = http
 
 
 def doc(dic: Dict[str, Callable[..., Any]]) -> str:

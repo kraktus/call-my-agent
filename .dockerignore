@@ -1,0 +1,7 @@
+# Exclude everything
+*
+
+# Whitelist specific files/directories
+!.dockerignore
+!Dockerfile
+!Brewfile
