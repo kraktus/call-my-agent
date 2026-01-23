@@ -25,6 +25,8 @@ IMAGE_NAME = "kraktus/call-my-agent"
 OPENCODE_CONFIG_DIR = ".config/opencode/"
 OPENCODE_SHARE_DIR = ".local/share/opencode"
 
+CONTAINER_HOME = Path("/home/linuxbrew")
+
 
 def run(
     cmd: List[str], check: bool = True, *args: Any, **kwargs: Any
@@ -111,19 +113,19 @@ def run_agent(
         log.info(f"Using existing image {IMAGE_NAME}")
 
     # Config mounts
-    binds = [Bind(source=cwd, target=Path("/workdir"))]
+    binds = [Bind(source=cwd, target=CONTAINER_HOME)]
 
     # Opencode specific mounts
     config_src = HOME / ".config/opencode"
     if config_src.exists():
         binds.append(
-            Bind(source=config_src, target=Path("/home/agent/.config/opencode/"))
+            Bind(source=config_src, target=Path(CONTAINER_HOME / ".config/opencode/"))
         )
 
     share_src = HOME / ".local/share/opencode"
     if share_src.exists():
         binds.append(
-            Bind(source=share_src, target=Path("/home/agent/.local/share/opencode/"))
+            Bind(source=share_src, target=Path(CONTAINER_HOME / ".local/share/opencode/"))
         )
 
     run_container(cwd=cwd, binds=binds,agent_args=agent_args)

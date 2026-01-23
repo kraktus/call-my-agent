@@ -4,8 +4,9 @@ FROM homebrew/brew:latest
 COPY Brewfile /home/.Brewfile
 RUN brew bundle install --file /home/.Brewfile
 
-# Set up working directory
+# home of the user
 WORKDIR /workdir
 
+ENTRYPOINT ["./assets/agent-entrypoint.sh"]
 # Default command
 CMD ["opencode"]

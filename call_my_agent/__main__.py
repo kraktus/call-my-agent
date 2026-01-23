@@ -42,7 +42,7 @@ def main() -> None:
     parser.add_argument(
         "--rebuild", action="store_true", help="Force rebuilding the Docker image"
     )
-    parser.add_argument("--agent-args", action="append", help="Arguments to pass to the agent (prefix each time by append)")
+    parser.add_argument("--agent-args", nargs='*', help="Arguments to pass to the agent (prefix each time by append)")
 
     args = parser.parse_args()
 
