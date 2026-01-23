@@ -14,6 +14,7 @@ from pathlib import Path
 import subprocess
 import random
 from dataclasses import dataclass
+from itertools import chain
 import string
 from typing import Dict, List, Optional, Tuple, Set, Any
 
@@ -47,6 +48,7 @@ def random_string(length: int):
 
 
 def build_image():
+    log.info(f"Building Docker image {IMAGE_NAME}...")
     run(
         [
             "docker",
@@ -63,7 +65,7 @@ def build_image():
 
 def image_already_exists() -> bool:
     res = run(["docker", "images", "-q", IMAGE_NAME], check=False)
-    return bool(res.stdout.strip())
+    return res != ""
 
 
 @dataclass(frozen=True)
@@ -72,13 +74,16 @@ class Bind:
     target: Path
     readonly: bool = False
 
-    def to_docker_arg(self) -> str:
-        return f"--mount type=bind,src={self.source},dst={self.target}{',readonly' if self.readonly else ''}"
+    def to_docker_arg(self) -> list[str]:
+        # target is in the container so obviously cannot exist here
+        return [f"--mount" ,f"type=bind,src={str(self.source.resolve(strict=True))},dst={str(self.target)}{',readonly' if self.readonly else ''}"]
 
 
 # we're reinvinting the docker package...
-def run_container(cwd: Path, binds: list[Bind]) -> None:
+def run_container(cwd: Path, binds: list[Bind], agent_args: list[str]) -> None:
     container_name = f"call-my-agent-{random_string(5)}"
+    binds_args = list(chain.from_iterable(bind.to_docker_arg() for bind in binds))
+    print(binds_args)
     run(
         [
             "docker",
@@ -86,21 +91,24 @@ def run_container(cwd: Path, binds: list[Bind]) -> None:
             "--rm",  # Always remove after execution
             "--name",
             container_name,
-            *[bind.to_docker_arg() for bind in binds],
             "-it",
-            "-t",
+            *binds_args,
             IMAGE_NAME,
+            *agent_args
         ],
         check=False,
     )
     log.info(f"container {container_name} stopped.")
 
 
-def main(
-    cwd: Path, debug: bool = False, rebuild: bool = False, dockerfile_only: bool = False
-):
-    if not image_already_exists():
+def run_agent(
+    cwd: Path, agent_args: list[str] | None, rebuild: bool = False):
+    if agent_args is None:
+        agent_args = []
+    if rebuild or not image_already_exists():
         build_image()
+    else:
+        log.info(f"Using existing image {IMAGE_NAME}")
 
     # Config mounts
     binds = [Bind(source=cwd, target=Path("/workdir"))]
@@ -118,4 +126,4 @@ def main(
             Bind(source=share_src, target=Path("/home/agent/.local/share/opencode/"))
         )
 
-    run_container(cwd=cwd, binds=binds)
+    run_container(cwd=cwd, binds=binds,agent_args=agent_args)

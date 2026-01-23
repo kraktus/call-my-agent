@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import traceback
 
 from argparse import RawTextHelpFormatter
 from collections import deque
@@ -19,21 +20,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, List, Union, Tuple
 
-from .docker import main as run_agent
+from .docker import run_agent
 from . import LOG_PATH, log
 
 ###########
 # Classes #
 ###########
-
-
-class Req:
-    def __init__(self) -> None:
-        pass
-        # http = requests.Session()
-        # http.mount("https://", ADAPTER)
-        # http.mount("http://", ADAPTER)
-        # self.http = http
 
 
 def doc(dic: Dict[str, Callable[..., Any]]) -> str:
@@ -50,7 +42,7 @@ def main() -> None:
     parser.add_argument(
         "--rebuild", action="store_true", help="Force rebuilding the Docker image"
     )
-    parser.add_argument("--agent-args", action="fo")
+    parser.add_argument("--agent-args", action="append", help="Arguments to pass to the agent (prefix each time by append)")
 
     args = parser.parse_args()
 
@@ -60,16 +52,12 @@ def main() -> None:
     try:
         run_agent(
             cwd=cwd,
-            debug=args.debug,
             rebuild=args.rebuild,
-            dockerfile_only=args.dockerfile,
+            agent_args=args.agent_args,
         )
     except Exception as e:
         log.error(f"Error running agent: {e}")
-        if args.debug:
-            import traceback
-
-            traceback.print_exc()
+        traceback.print_exc()
         sys.exit(1)
 
 
