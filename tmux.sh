@@ -7,7 +7,7 @@ newTmuxSessionScript() {
   tmux split-window -d
   tmux split-window -d
   tmux send-keys -t "$SESSION_NAME".1 "uv run pyright src -w" C-m
-  tmux send-keys -t "$SESSION_NAME".2 "" C-m
+  tmux send-keys -t "$SESSION_NAME".2 "uv run ruff format ." C-m
   tmux send-keys -t "$SESSION_NAME".4 "" C-m
   tmux attach-session -t "$SESSION_NAME"
 }
