@@ -90,6 +90,8 @@ def run_container(cwd: Path, binds: list[Bind], agent_args: list[str]) -> None:
         [
             "docker",
             "run",
+            "-u",
+            '501:20',
             "--rm",  # Always remove after execution
             "--name",
             container_name,
@@ -113,7 +115,7 @@ def run_agent(
         log.info(f"Using existing image {IMAGE_NAME}")
 
     # Config mounts
-    binds = [Bind(source=cwd, target=CONTAINER_HOME)]
+    binds = [Bind(source=cwd, target=CONTAINER_HOME / "workdir")]
 
     # Opencode specific mounts
     config_src = HOME / ".config/opencode"
