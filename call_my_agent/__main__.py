@@ -42,7 +42,25 @@ def main() -> None:
     parser.add_argument(
         "--rebuild", action="store_true", help="Force rebuilding the Docker image"
     )
-    parser.add_argument("--agent-args", nargs='*', help="Arguments to pass to the agent (prefix each time by append)")
+    parser.add_argument(
+        "--uid",
+        "-u",
+        type=int,
+        default=os.getuid(),
+        help="User ID to use inside the Docker container",
+    )
+    parser.add_argument(
+        "--gid",
+        "-g",
+        type=int,
+        default=os.getgid(),
+        help="Group ID to use inside the Docker container",
+    )
+    parser.add_argument(
+        "--agent-args",
+        nargs="*",
+        help="Arguments to pass to the agent (prefix each time by append)",
+    )
 
     args = parser.parse_args()
 
@@ -53,6 +71,8 @@ def main() -> None:
         run_agent(
             cwd=cwd,
             rebuild=args.rebuild,
+            uid=args.uid,
+            gid=args.gid,
             agent_args=args.agent_args,
         )
     except Exception as e:

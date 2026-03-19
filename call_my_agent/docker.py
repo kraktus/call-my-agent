@@ -49,12 +49,16 @@ def random_string(length: int):
     return "".join(random.choices(string.ascii_lowercase, k=length))
 
 
-def build_image():
-    log.info(f"Building Docker image {IMAGE_NAME}...")
+def build_image(uid: int, gid: int):
+    log.info(f"Building Docker image {IMAGE_NAME} with u:{uid} g:{gid}...")
     run(
         [
             "docker",
             "build",
+            "--build-arg",
+            f"UID={uid}",
+            "--build-arg",
+            f"GID={gid}",
             "-f",
             str(REPO_DIR / "Dockerfile"),
             str(REPO_DIR),
@@ -78,7 +82,10 @@ class Bind:
 
     def to_docker_arg(self) -> list[str]:
         # target is in the container so obviously cannot exist here
-        return [f"--mount" ,f"type=bind,src={str(self.source.resolve(strict=True))},dst={str(self.target)}{',readonly' if self.readonly else ''}"]
+        return [
+            f"--mount",
+            f"type=bind,src={str(self.source.resolve(strict=True))},dst={str(self.target)}{',readonly' if self.readonly else ''}",
+        ]
 
 
 # we're reinvinting the docker package...
@@ -90,15 +97,13 @@ def run_container(cwd: Path, binds: list[Bind], agent_args: list[str]) -> None:
         [
             "docker",
             "run",
-            "-u",
-            '501:20',
             "--rm",  # Always remove after execution
             "--name",
             container_name,
             "-it",
             *binds_args,
             IMAGE_NAME,
-            *agent_args
+            *agent_args,
         ],
         check=False,
     )
@@ -106,11 +111,12 @@ def run_container(cwd: Path, binds: list[Bind], agent_args: list[str]) -> None:
 
 
 def run_agent(
-    cwd: Path, agent_args: list[str] | None, rebuild: bool = False):
+    cwd: Path, uid: int, gid: int, agent_args: list[str] | None, rebuild: bool = False
+):
     if agent_args is None:
         agent_args = []
     if rebuild or not image_already_exists():
-        build_image()
+        build_image(uid=uid, gid=gid)
     else:
         log.info(f"Using existing image {IMAGE_NAME}")
 
@@ -127,7 +133,9 @@ def run_agent(
     share_src = HOME / ".local/share/opencode"
     if share_src.exists():
         binds.append(
-            Bind(source=share_src, target=Path(CONTAINER_HOME / ".local/share/opencode/"))
+            Bind(
+                source=share_src, target=Path(CONTAINER_HOME / ".local/share/opencode/")
+            )
         )
 
-    run_container(cwd=cwd, binds=binds,agent_args=agent_args)
+    run_container(cwd=cwd, binds=binds, agent_args=agent_args)
