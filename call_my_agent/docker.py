@@ -123,19 +123,14 @@ def run_agent(
     # Config mounts
     binds = [Bind(source=cwd, target=CONTAINER_HOME / "workdir")]
 
-    # Opencode specific mounts
-    config_src = HOME / ".config/opencode"
-    if config_src.exists():
-        binds.append(
-            Bind(source=config_src, target=Path(CONTAINER_HOME / ".config/opencode/"))
-        )
-
-    share_src = HOME / ".local/share/opencode"
-    if share_src.exists():
-        binds.append(
-            Bind(
-                source=share_src, target=Path(CONTAINER_HOME / ".local/share/opencode/")
+    home_mount_paths = [ ".config/opencode", ".local/share/opencode" ]
+    for path in home_mount_paths:
+        src = HOME / path
+        if src.exists():
+            binds.append(
+                Bind(source=src, target=Path(CONTAINER_HOME / path))
             )
-        )
+
+
 
     run_container(cwd=cwd, binds=binds, agent_args=agent_args)
