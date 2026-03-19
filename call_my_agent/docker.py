@@ -104,9 +104,8 @@ def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
     # home of the user
     WORKDIR {CONTAINER_HOME}/workdir
 
-    ENTRYPOINT ["/bin/bash"]
-    # Default command
-    # CMD ["opencode"]
+    ENTRYPOINT ["{CONTAINER_HOME}/agent-entrypoint.sh"]
+    CMD ["opencode"]
     """
 
 
