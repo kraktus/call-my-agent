@@ -1,6 +1,17 @@
 
 
-## usage
+
+## usage 
+
+### prod
+
+
+add 
+`alias vibe="uv --project "YOUR_PROJECT_PATH_GOES_HERE" run --directory "YOUR_PROJECT_PATH_GOES_HERE" -m "call_my_agent""`
+
+of course `YOUR_PROJECT_PATH_GOES_HERE` need to match yours, edit it.
+
+## debug
 
 `uv run -m call_my_agent --rebuild`
 
