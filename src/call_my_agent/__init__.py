@@ -13,7 +13,8 @@ from pathlib import Path
 
 LOG_PATH = f"{__package__}.log"
 
-REPO_DIR = Path(__file__).resolve(strict=True).parent.parent
+REPO_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+
 HOME = Path.home().resolve(strict=True)
 
 log = logging.getLogger(__name__)

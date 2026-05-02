@@ -89,7 +89,7 @@ def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
 
     USER root
 
-    RUN usermod -u $UID linuxbrew && usermod -aG 20 linuxbrew
+    RUN usermod -u $UID linuxbrew && usermod -aG $GID linuxbrew
 
     USER linuxbrew
 
@@ -140,6 +140,7 @@ def build_image(uid: int, gid: int, dockerfile: str):
             f"UID={uid}",
             "--build-arg",
             f"GID={gid}",
+            "--no-cache",
             "-f",
             "-",
             str(REPO_DIR),
