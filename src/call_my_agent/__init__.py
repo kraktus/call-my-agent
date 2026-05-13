@@ -29,7 +29,7 @@ handler.setFormatter(logging.Formatter(format_string))
 handler.setLevel(logging.DEBUG)
 log.addHandler(handler)
 
-handler_2 = logging.StreamHandler(sys.stdout)
+handler_2 = logging.StreamHandler(sys.stderr)
 handler_2.setFormatter(logging.Formatter(format_string))
 handler_2.setLevel(logging.INFO)
 if __debug__:

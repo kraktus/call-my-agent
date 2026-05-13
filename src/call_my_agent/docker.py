@@ -72,6 +72,9 @@ class MountPath:
 #############
 
 
+def get_mount_paths() -> list[MountPath]:
+    return [MountPath.from_home_path(x) for x in [".config/opencode", ".local/share/opencode"]]
+
 def join_but_not_last(lst: list[str], sep: str) -> str:
     if len(lst) == 0:
         return ""
@@ -183,9 +186,7 @@ def run_agent(
     cwd: Path, uid: int, gid: int, agent_args: list[str] | None, rebuild: bool = False
 ):
 
-    mount_paths = [
-        MountPath.from_home_path(x) for x in [".config/opencode", ".local/share/opencode"]
-    ]
+    mount_paths = get_mount_paths()
     if agent_args is None:
         agent_args = []
     if rebuild or not image_already_exists():
