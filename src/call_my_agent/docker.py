@@ -5,18 +5,13 @@
 
 """"""
 
-import io
-import os
-import sys
-import tarfile
-import logging
 from pathlib import Path
 import subprocess
 import random
 from dataclasses import dataclass
 from itertools import chain
 import string
-from typing import Dict, List, Optional, Tuple, Set, Any
+from typing import List, Optional, Any
 
 from . import REPO_DIR, log, HOME
 
@@ -42,7 +37,7 @@ class Bind:
     def to_docker_arg(self) -> list[str]:
         # target is in the container so obviously cannot exist here
         return [
-            f"--mount",
+            "--mount",
             f"type=bind,src={str(self.source.resolve(strict=True))},dst={str(self.target)}{',readonly' if self.readonly else ''}",
         ]
 
@@ -104,11 +99,14 @@ def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
     RUN {join_but_not_last([p.make_dir() for p in dirs_to_mount], " \\ && ")}
 
     COPY assets/agent-entrypoint.sh {CONTAINER_HOME}/agent-entrypoint.sh
+    COPY assets/opencode-tmux.sh {CONTAINER_HOME}/opencode-tmux.sh
+    RUN chmod +x {CONTAINER_HOME}/opencode-tmux.sh && \
+        ln -s {CONTAINER_HOME}/opencode-tmux.sh /usr/local/bin/opencode-tmux
     # home of the user
     WORKDIR {CONTAINER_HOME}/workdir
 
     ENTRYPOINT ["{CONTAINER_HOME}/agent-entrypoint.sh"]
-    CMD ["opencode"]
+    CMD ["opencode-tmux"]
     """
 
 

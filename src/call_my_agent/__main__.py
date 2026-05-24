@@ -8,20 +8,16 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 import traceback
 
 from argparse import RawTextHelpFormatter
-from collections import deque
-from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, List, Union, Tuple
+from typing import Any, Callable, Dict
 
 from .docker import run_agent, to_dockerfile, get_mount_paths
-from . import LOG_PATH, log
+from . import log
 
 ###########
 # Classes #
