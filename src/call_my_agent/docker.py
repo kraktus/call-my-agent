@@ -131,23 +131,27 @@ def random_string(length: int):
     return "".join(random.choices(string.ascii_lowercase, k=length))
 
 
-def build_image(uid: int, gid: int, dockerfile: str):
+def build_image(uid: int, gid: int, dockerfile: str, no_cache: bool = False):
     log.info(f"Building Docker image {IMAGE_NAME} with u:{uid} g:{gid}...")
+    cmd = [
+        "docker",
+        "build",
+        "--build-arg",
+        f"UID={uid}",
+        "--build-arg",
+        f"GID={gid}",
+    ]
+    if no_cache:
+        cmd.append("--no-cache")
+    cmd.extend([
+        "-f",
+        "-",
+        str(REPO_DIR),
+        "-t",
+        IMAGE_NAME,
+    ])
     run(
-        [
-            "docker",
-            "build",
-            "--build-arg",
-            f"UID={uid}",
-            "--build-arg",
-            f"GID={gid}",
-            "--no-cache",
-            "-f",
-            "-",
-            str(REPO_DIR),
-            "-t",
-            IMAGE_NAME,
-        ],
+        cmd,
         input=dockerfile,
     )
     log.info(f"Builf of {IMAGE_NAME} successful")
@@ -181,14 +185,14 @@ def run_container(binds: list[Bind], agent_args: list[str]) -> None:
 
 
 def run_agent(
-    cwd: Path, uid: int, gid: int, agent_args: list[str] | None, rebuild: bool = False
+    cwd: Path, uid: int, gid: int, agent_args: list[str] | None, rebuild: bool = False, no_cache: bool = False
 ):
 
     mount_paths = get_mount_paths()
     if agent_args is None:
         agent_args = []
     if rebuild or not image_already_exists():
-        build_image(uid=uid, gid=gid, dockerfile=to_dockerfile(mount_paths))
+        build_image(uid=uid, gid=gid, dockerfile=to_dockerfile(mount_paths), no_cache=no_cache)
     else:
         log.info(f"Using existing image {IMAGE_NAME}")
 

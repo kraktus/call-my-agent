@@ -37,6 +37,7 @@ def run_cmd(args: argparse.Namespace) -> None:
     run_agent(
         cwd=cwd,
         rebuild=args.rebuild,
+        no_cache=args.no_cache,
         uid=args.uid,
         gid=args.gid,
         agent_args=args.agent_args,
@@ -49,6 +50,9 @@ def main() -> None:
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
         "--rebuild", action="store_true", help="Force rebuilding the Docker image"
+    )
+    parent_parser.add_argument(
+        "--no-cache", action="store_true", help="Do not use cache when building the image"
     )
     parent_parser.add_argument(
         "--uid",
