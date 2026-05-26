@@ -100,12 +100,14 @@ def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
 
     COPY assets/agent-entrypoint.sh {CONTAINER_HOME}/agent-entrypoint.sh
     COPY assets/opencode-tmux.sh {CONTAINER_HOME}/opencode-tmux.sh
-    RUN chmod +x {CONTAINER_HOME}/opencode-tmux.sh
+    USER root
+    RUN chmod +x {CONTAINER_HOME}/agent-entrypoint.sh {CONTAINER_HOME}/opencode-tmux.sh
+    USER linuxbrew
     # home of the user
     WORKDIR {CONTAINER_HOME}/workdir
 
     ENTRYPOINT ["{CONTAINER_HOME}/agent-entrypoint.sh"]
-    CMD ["opencode-tmux"]
+    CMD ["{CONTAINER_HOME}/opencode-tmux.sh"]
     """
 
 
