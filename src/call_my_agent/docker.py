@@ -202,5 +202,9 @@ def run_agent(
     for path in mount_paths:
         if target := path.to_bind_if_exists():
             binds.append(target)
+            
+    tmux_conf_path = Path(HOME / ".tmux.conf")
+    if tmux_conf_path.exists():
+        binds.append(Bind(source=tmux_conf_path, target=CONTAINER_HOME / ".tmux.conf", readonly=True))
 
     run_container(binds=binds, agent_args=agent_args)
