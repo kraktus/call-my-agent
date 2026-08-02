@@ -1,0 +1,3 @@
+eval "$(brew shellenv)"
+
+export PROMPT='%(?.%F{green}➜%f.%F{red}➜%f) %F{cyan}%~%f %# '
