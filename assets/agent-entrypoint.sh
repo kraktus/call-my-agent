@@ -1,6 +1,9 @@
 #!/bin/bash
+
+export PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
+
 if [ $# -eq 0 ]; then
-  exec /bin/bash --login -i
+  exec /home/linuxbrew/.linuxbrew/bin/zsh -i
 else
-  exec /bin/bash --login -c "$*"
+  exec /home/linuxbrew/.linuxbrew/bin/zsh -c "$*"
 fi

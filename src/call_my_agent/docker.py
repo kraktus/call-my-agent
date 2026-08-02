@@ -102,6 +102,10 @@ def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
     COPY assets/opencode-tmux.sh {CONTAINER_HOME}/opencode-tmux.sh
     USER root
     RUN chmod +x {CONTAINER_HOME}/agent-entrypoint.sh {CONTAINER_HOME}/opencode-tmux.sh
+    # Switch the default shell of the linuxbrew user to zsh
+    RUN echo /home/linuxbrew/.linuxbrew/bin/zsh >> /etc/shells && usermod -s /home/linuxbrew/.linuxbrew/bin/zsh linuxbrew
+    COPY assets/zshrc {CONTAINER_HOME}/.zshrc
+    RUN chown linuxbrew:linuxbrew {CONTAINER_HOME}/.zshrc
     USER linuxbrew
     # home of the user
     WORKDIR {CONTAINER_HOME}/workdir
