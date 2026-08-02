@@ -6,6 +6,7 @@
 """"""
 
 from pathlib import Path
+import os
 import subprocess
 import random
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ OPENCODE_CONFIG_DIR = ".config/opencode/"
 OPENCODE_SHARE_DIR = ".local/share/opencode"
 
 CONTAINER_HOME = Path("/home/linuxbrew")
+BREW_CACHE_DIR = CONTAINER_HOME / ".cache" / "Homebrew"
 
 
 ###########
@@ -80,7 +82,8 @@ def join_but_not_last(lst: list[str], sep: str) -> str:
 
 def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
     brewfile_path = CONTAINER_HOME / ".Brewfile"
-    return f"""FROM homebrew/brew:latest
+    return f"""# syntax=docker/dockerfile:1
+FROM homebrew/brew:latest
 
     ARG UID=501
     ARG GID=20
@@ -88,12 +91,14 @@ def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
     USER root
 
     RUN usermod -u $UID linuxbrew && usermod -aG $GID linuxbrew
+    # Make the brew cache mount writable by the linuxbrew user, ownership persists in the mount
+    RUN --mount=type=cache,target={BREW_CACHE_DIR} chown -R linuxbrew:linuxbrew {BREW_CACHE_DIR}
 
     USER linuxbrew
 
-    # Install dependencies from Brewfile
+    # Install dependencies from Brewfile, keeping the download cache across rebuilds
     COPY Brewfile {brewfile_path}
-    RUN brew bundle install --file {brewfile_path}
+    RUN --mount=type=cache,target={BREW_CACHE_DIR} brew bundle install --file {brewfile_path}
 
     # Needed because otherwise the intermediate directories are owned by root and the agent user can't write to them
     RUN {join_but_not_last([p.make_dir() for p in dirs_to_mount], " \\ && ")}
@@ -158,6 +163,7 @@ def build_image(uid: int, gid: int, dockerfile: str, no_cache: bool = False):
     run(
         cmd,
         input=dockerfile,
+        env={**os.environ, "DOCKER_BUILDKIT": "1"},
     )
     log.info(f"Builf of {IMAGE_NAME} successful")
 
