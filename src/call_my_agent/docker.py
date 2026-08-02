@@ -24,6 +24,9 @@ OPENCODE_SHARE_DIR = ".local/share/opencode"
 CONTAINER_HOME = Path("/home/linuxbrew")
 BREW_CACHE_DIR = CONTAINER_HOME / ".cache" / "Homebrew"
 
+SCRIPTS_REPO_URL = "https://github.com/kraktus/scripts.git"
+SCRIPTS_CONTAINER_DIR = CONTAINER_HOME / "scripts"
+
 
 ###########
 # Classes #
@@ -63,14 +66,17 @@ class MountPath:
         return f"mkdir -p {str(self.target)}"
 
 
-
 #############
 # Functions #
 #############
 
 
 def get_mount_paths() -> list[MountPath]:
-    return [MountPath.from_home_path(x) for x in [".config/opencode", ".local/share/opencode"]]
+    return [
+        MountPath.from_home_path(x)
+        for x in [".config/opencode", ".local/share/opencode"]
+    ]
+
 
 def join_but_not_last(lst: list[str], sep: str) -> str:
     if len(lst) == 0:
@@ -79,6 +85,7 @@ def join_but_not_last(lst: list[str], sep: str) -> str:
         return lst[0]
     else:
         return sep.join(lst[:-1]) + sep + lst[-1]
+
 
 def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
     brewfile_path = CONTAINER_HOME / ".Brewfile"
@@ -112,6 +119,8 @@ FROM homebrew/brew:latest
     COPY assets/zshrc {CONTAINER_HOME}/.zshrc
     RUN chown linuxbrew:linuxbrew {CONTAINER_HOME}/.zshrc
     USER linuxbrew
+    # Fetch the scripts repo (shallow clone, no history) to provide the zsh aliases
+    RUN git clone --depth 1 {SCRIPTS_REPO_URL} {SCRIPTS_CONTAINER_DIR}
     # home of the user
     WORKDIR {CONTAINER_HOME}/workdir
 
@@ -153,13 +162,15 @@ def build_image(uid: int, gid: int, dockerfile: str, no_cache: bool = False):
     ]
     if no_cache:
         cmd.append("--no-cache")
-    cmd.extend([
-        "-f",
-        "-",
-        str(REPO_DIR),
-        "-t",
-        IMAGE_NAME,
-    ])
+    cmd.extend(
+        [
+            "-f",
+            "-",
+            str(REPO_DIR),
+            "-t",
+            IMAGE_NAME,
+        ]
+    )
     run(
         cmd,
         input=dockerfile,
@@ -196,14 +207,20 @@ def run_container(binds: list[Bind], agent_args: list[str]) -> None:
 
 
 def run_agent(
-    cwd: Path, uid: int, gid: int, agent_args: list[str] | None, rebuild: bool = False, no_cache: bool = False
+    cwd: Path,
+    uid: int,
+    gid: int,
+    agent_args: list[str] | None,
+    rebuild: bool = False,
+    no_cache: bool = False,
 ):
-
     mount_paths = get_mount_paths()
     if agent_args is None:
         agent_args = []
     if rebuild or not image_already_exists():
-        build_image(uid=uid, gid=gid, dockerfile=to_dockerfile(mount_paths), no_cache=no_cache)
+        build_image(
+            uid=uid, gid=gid, dockerfile=to_dockerfile(mount_paths), no_cache=no_cache
+        )
     else:
         log.info(f"Using existing image {IMAGE_NAME}")
 
@@ -212,9 +229,15 @@ def run_agent(
     for path in mount_paths:
         if target := path.to_bind_if_exists():
             binds.append(target)
-            
+
     tmux_conf_path = Path(HOME / ".tmux.conf")
     if tmux_conf_path.exists():
-        binds.append(Bind(source=tmux_conf_path, target=CONTAINER_HOME / ".tmux.conf", readonly=True))
+        binds.append(
+            Bind(
+                source=tmux_conf_path,
+                target=CONTAINER_HOME / ".tmux.conf",
+                readonly=True,
+            )
+        )
 
     run_container(binds=binds, agent_args=agent_args)
