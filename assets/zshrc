@@ -4,4 +4,4 @@ for zsh_file in /home/linuxbrew/scripts/zsh/*.zsh(.N); do
     source "$zsh_file"
 done
 
-export PROMPT='%(?.%F{green}➜%f.%F{red}➜%f) %F{cyan}%~%f %# '
+export PROMPT='AI %~ '

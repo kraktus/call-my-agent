@@ -87,6 +87,11 @@ def join_but_not_last(lst: list[str], sep: str) -> str:
         return sep.join(lst[:-1]) + sep + lst[-1]
 
 
+def container_workdir(cwd: Path) -> Path:
+    """Path of the mounted working directory inside the container."""
+    return CONTAINER_HOME / cwd.name
+
+
 def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
     brewfile_path = CONTAINER_HOME / ".Brewfile"
     return f"""# syntax=docker/dockerfile:1
@@ -121,8 +126,6 @@ FROM homebrew/brew:latest
     USER linuxbrew
     # Fetch the scripts repo (shallow clone, no history) to provide the zsh aliases
     RUN git clone --depth 1 {SCRIPTS_REPO_URL} {SCRIPTS_CONTAINER_DIR}
-    # home of the user
-    WORKDIR {CONTAINER_HOME}/workdir
 
     ENTRYPOINT ["{CONTAINER_HOME}/agent-entrypoint.sh"]
     CMD ["{CONTAINER_HOME}/opencode-tmux.sh"]
@@ -185,7 +188,7 @@ def image_already_exists() -> bool:
 
 
 # we're reinvinting the docker package...
-def run_container(binds: list[Bind], agent_args: list[str]) -> None:
+def run_container(binds: list[Bind], workdir: Path, agent_args: list[str]) -> None:
     container_name = f"call-my-agent-{random_string(5)}"
     binds_args = list(chain.from_iterable(bind.to_docker_arg() for bind in binds))
     print(binds_args)
@@ -197,6 +200,8 @@ def run_container(binds: list[Bind], agent_args: list[str]) -> None:
             "--name",
             container_name,
             "-it",
+            "--workdir",
+            str(workdir),
             *binds_args,
             IMAGE_NAME,
             *agent_args,
@@ -225,7 +230,7 @@ def run_agent(
         log.info(f"Using existing image {IMAGE_NAME}")
 
     # Config mounts
-    binds = [Bind(source=cwd, target=CONTAINER_HOME / "workdir")]
+    binds = [Bind(source=cwd, target=container_workdir(cwd))]
     for path in mount_paths:
         if target := path.to_bind_if_exists():
             binds.append(target)
@@ -240,4 +245,4 @@ def run_agent(
             )
         )
 
-    run_container(binds=binds, agent_args=agent_args)
+    run_container(binds=binds, workdir=container_workdir(cwd), agent_args=agent_args)
