@@ -191,6 +191,7 @@ def image_already_exists() -> bool:
 def run_container(binds: list[Bind], workdir: Path, agent_args: list[str]) -> None:
     container_name = f"call-my-agent-{random_string(5)}"
     binds_args = list(chain.from_iterable(bind.to_docker_arg() for bind in binds))
+    env_args = ["--env", f"TERM={os.environ['TERM']}"] if "TERM" in os.environ else []
     print(binds_args)
     run(
         [
@@ -203,6 +204,7 @@ def run_container(binds: list[Bind], workdir: Path, agent_args: list[str]) -> No
             "--workdir",
             str(workdir),
             *binds_args,
+            *env_args,
             IMAGE_NAME,
             *agent_args,
         ],

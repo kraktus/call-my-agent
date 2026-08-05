@@ -18,6 +18,9 @@ call_my_agent() {
         
         # Make the 3 rows perfectly even
         tmux select-layout -t "$session_name" even-vertical
+
+        # Different prefix to avoid conflict with a host tmux
+        tmux set-option -t "$session_name" prefix C-a
         
         # Change the tmux status bar color to blue as requested
         tmux set-option -t "$session_name" status-bg blue
