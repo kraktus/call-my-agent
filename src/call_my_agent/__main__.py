@@ -41,10 +41,13 @@ def run_cmd(args: argparse.Namespace) -> None:
         uid=args.uid,
         gid=args.gid,
         agent_args=args.agent_args,
+        ports=args.ports,
     )
+
 
 def gen_cmd(args: argparse.Namespace) -> None:
     print(to_dockerfile(get_mount_paths()))
+
 
 def main() -> None:
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -52,7 +55,9 @@ def main() -> None:
         "--rebuild", action="store_true", help="Force rebuilding the Docker image"
     )
     parent_parser.add_argument(
-        "--no-cache", action="store_true", help="Do not use cache when building the image"
+        "--no-cache",
+        action="store_true",
+        help="Do not use cache when building the image",
     )
     parent_parser.add_argument(
         "--uid",
@@ -73,25 +78,33 @@ def main() -> None:
         nargs="*",
         help="Arguments to pass to the agent (prefix each time by append)",
     )
+    parent_parser.add_argument(
+        "--ports",
+        "-p",
+        nargs="*",
+        type=int,
+        default=[],
+        help="Ports to publish from the container to the host, "
+        "skipping any port already in use on the host",
+    )
 
-    parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter, parents=[parent_parser])
+    parser = argparse.ArgumentParser(
+        formatter_class=RawTextHelpFormatter, parents=[parent_parser]
+    )
     parser.set_defaults(func=run_cmd)
 
     subparsers = parser.add_subparsers(
-        dest="command",
-        help="Command to execute (default: run)"
+        dest="command", help="Command to execute (default: run)"
     )
 
     run_parser = subparsers.add_parser(
-        "run", 
-        parents=[parent_parser], 
-        help="Run the agent (default)"
+        "run", parents=[parent_parser], help="Run the agent (default)"
     )
     run_parser.set_defaults(func=run_cmd)
 
     gen_parser = subparsers.add_parser(
-        "gen-dockerfile", 
-        help="Output the Dockerfile to stdout. Recommended usage:\n%(prog)s > Dockerfile"
+        "gen-dockerfile",
+        help="Output the Dockerfile to stdout. Recommended usage:\n%(prog)s > Dockerfile",
     )
     gen_parser.set_defaults(func=gen_cmd)
 

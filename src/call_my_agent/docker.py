@@ -7,6 +7,7 @@
 
 from pathlib import Path
 import os
+import socket
 import subprocess
 import random
 from dataclasses import dataclass
@@ -187,10 +188,28 @@ def image_already_exists() -> bool:
     return res != ""
 
 
+def port_args(ports: list[int]) -> list[str]:
+    """Map container ports to host, skipping any port already in use on the host."""
+    args = []
+    for port in ports:
+        try:
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).bind(("0.0.0.0", port))
+            args.extend(["-p", f"{port}:{port}"])
+        except OSError:
+            log.warning(f"Port {port} already in use on the host, not publishing")
+    return args
+
+
 # we're reinvinting the docker package...
-def run_container(binds: list[Bind], workdir: Path, agent_args: list[str]) -> None:
+def run_container(
+    binds: list[Bind],
+    workdir: Path,
+    agent_args: list[str],
+    ports: list[int] | None = None,
+) -> None:
     container_name = f"call-my-agent-{random_string(5)}"
     binds_args = list(chain.from_iterable(bind.to_docker_arg() for bind in binds))
+    publish_args = port_args(ports or [])
     env_args = ["--env", f"TERM={os.environ['TERM']}"] if "TERM" in os.environ else []
     print(binds_args)
     run(
@@ -204,6 +223,7 @@ def run_container(binds: list[Bind], workdir: Path, agent_args: list[str]) -> No
             "--workdir",
             str(workdir),
             *binds_args,
+            *publish_args,
             *env_args,
             IMAGE_NAME,
             *agent_args,
@@ -220,6 +240,7 @@ def run_agent(
     agent_args: list[str] | None,
     rebuild: bool = False,
     no_cache: bool = False,
+    ports: list[int] | None = None,
 ):
     mount_paths = get_mount_paths()
     if agent_args is None:
@@ -247,4 +268,9 @@ def run_agent(
             )
         )
 
-    run_container(binds=binds, workdir=container_workdir(cwd), agent_args=agent_args)
+    run_container(
+        binds=binds,
+        workdir=container_workdir(cwd),
+        agent_args=agent_args,
+        ports=ports,
+    )
