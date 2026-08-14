@@ -14,10 +14,10 @@ call_my_agent() {
         
         # Split the window vertically (creating rows) for standard shell prompts
         tmux split-window -v -t "$session_name"
-        tmux split-window -v -t "$session_name"
-        
-        # Make the 3 rows perfectly even
-        tmux select-layout -t "$session_name" even-vertical
+
+        # Give the top (opencode) pane 66% of the height
+        tmux set-window-option -t "$session_name" main-pane-height 66%
+        tmux select-layout -t "$session_name" main-horizontal
 
         # Different prefix to avoid conflict with a host tmux
         tmux set-option -t "$session_name" prefix C-a

@@ -11,11 +11,11 @@ import sys
 
 from pathlib import Path
 
-LOG_PATH = f"{__package__}.log"
-
 REPO_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 
 HOME = Path.home().resolve(strict=True)
+
+LOG_PATH = REPO_DIR / f"{__package__}.log"
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
