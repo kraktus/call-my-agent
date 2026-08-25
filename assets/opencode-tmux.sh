@@ -3,7 +3,13 @@
 # Agent launch function
 call_my_agent() {
     local session_name="agent_session"
-    
+
+    # Let applications inside tmux send OSC sequences (incl. OSC 52 clipboard) to the terminal
+    tmux set-option -g allow-passthrough on
+
+    # Enable tmux clipboard integration (OSC 52)
+    tmux set-option -g set-clipboard on
+
     # Check if session already exists
     tmux has-session -t "$session_name" 2>/dev/null
     
