@@ -52,12 +52,15 @@ def gen_cmd(args: argparse.Namespace) -> None:
 def main() -> None:
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
-        "--rebuild", action="store_true", help="Force rebuilding the Docker image"
+        "--rebuild",
+        action="store_true",
+        help="Rebuild the Docker image, refreshing the brew packages "
+        "(only the brew layer and later are invalidated, not the base image)",
     )
     parent_parser.add_argument(
         "--no-cache",
         action="store_true",
-        help="Do not use cache when building the image",
+        help="Do not use cache when building the image (full rebuild)",
     )
     parent_parser.add_argument(
         "--uid",

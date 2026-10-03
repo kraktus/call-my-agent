@@ -10,6 +10,7 @@ import os
 import socket
 import subprocess
 import random
+import time
 from dataclasses import dataclass
 from itertools import chain
 import string
@@ -109,9 +110,15 @@ FROM homebrew/brew:latest
 
     USER linuxbrew
 
+    # Bump this arg to force only the brew layer (and later) to rebuild,
+    # keeping the base image and user setup cached. --no-cache remains the full nuke.
+    ARG BREW_REFRESH=0
     # Install dependencies from Brewfile, keeping the download cache across rebuilds
     COPY Brewfile {brewfile_path}
-    RUN --mount=type=cache,target={BREW_CACHE_DIR} brew bundle install --file {brewfile_path}
+    RUN --mount=type=cache,target={BREW_CACHE_DIR} \\
+        echo "brew refresh: $BREW_REFRESH" \\
+        && brew update \\
+        && brew bundle install --file {brewfile_path}
 
     # Needed because otherwise the intermediate directories are owned by root and the agent user can't write to them
     RUN {join_but_not_last([p.make_dir() for p in dirs_to_mount], " \\ && ")}
@@ -154,7 +161,9 @@ def random_string(length: int):
     return "".join(random.choices(string.ascii_lowercase, k=length))
 
 
-def build_image(uid: int, gid: int, dockerfile: str, no_cache: bool = False):
+def build_image(
+    uid: int, gid: int, dockerfile: str, no_cache: bool = False, refresh: bool = False
+):
     log.info(f"Building Docker image {IMAGE_NAME} with u:{uid} g:{gid}...")
     cmd = [
         "docker",
@@ -166,6 +175,9 @@ def build_image(uid: int, gid: int, dockerfile: str, no_cache: bool = False):
     ]
     if no_cache:
         cmd.append("--no-cache")
+    if refresh:
+        # Only invalidates the brew layer and the layers after it
+        cmd.extend(["--build-arg", f"BREW_REFRESH={int(time.time())}"])
     cmd.extend(
         [
             "-f",
@@ -245,9 +257,13 @@ def run_agent(
     mount_paths = get_mount_paths()
     if agent_args is None:
         agent_args = []
-    if rebuild or not image_already_exists():
+    if rebuild or no_cache or not image_already_exists():
         build_image(
-            uid=uid, gid=gid, dockerfile=to_dockerfile(mount_paths), no_cache=no_cache
+            uid=uid,
+            gid=gid,
+            dockerfile=to_dockerfile(mount_paths),
+            no_cache=no_cache,
+            refresh=rebuild,
         )
     else:
         log.info(f"Using existing image {IMAGE_NAME}")
