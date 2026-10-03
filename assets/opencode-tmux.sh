@@ -4,8 +4,11 @@
 call_my_agent() {
     local session_name="agent_session"
 
-    # Let applications inside tmux send OSC sequences (incl. OSC 52 clipboard) to the terminal
-    tmux set-option -g allow-passthrough on
+    # Keep passthrough OFF. Opencode wraps its terminal-capability queries in the
+    # tmux passthrough DCS; when passthrough is on, the terminal's replies
+    # (e.g. "2026;2$y", "1;2;4c") come back and leak as garbage into a pane.
+    # OSC 52 clipboard does NOT need passthrough, set-clipboard handles it.
+    tmux set-option -g allow-passthrough off
 
     # Enable tmux clipboard integration (OSC 52)
     tmux set-option -g set-clipboard on
