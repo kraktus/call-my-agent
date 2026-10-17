@@ -4,10 +4,9 @@
 call_my_agent() {
     local session_name="agent_session"
 
-    # Keep passthrough OFF. Opencode wraps its terminal-capability queries in the
-    # tmux passthrough DCS; when passthrough is on, the terminal's replies
-    # (e.g. "2026;2$y", "1;2;4c") come back and leak as garbage into a pane.
-    # OSC 52 clipboard does NOT need passthrough, set-clipboard handles it.
+    # Keep passthrough OFF. OpenCode's terminal-capability queries can otherwise
+    # leak their replies (e.g. "2026;2$y", "1;2;4c") into a pane. OSC 52
+    # clipboard does not need passthrough; set-clipboard handles it.
     tmux set-option -g allow-passthrough off
 
     # Enable tmux clipboard integration (OSC 52)
@@ -17,9 +16,10 @@ call_my_agent() {
     tmux has-session -t "$session_name" 2>/dev/null
     
     if [ $? != 0 ]; then
-        # Create new detached session, running opencode in the first pane
-        # Pass any arguments down to opencode
-        tmux new-session -d -s "$session_name" "opencode $*"
+        # Create the panes before starting OpenCode. Its startup terminal queries
+        # must not race with split-window, or their replies can land in the shell
+        # pane instead of the OpenCode pane.
+        tmux new-session -d -s "$session_name"
         
         # Split the window vertically (creating rows) for standard shell prompts
         tmux split-window -v -t "$session_name"
@@ -37,6 +37,11 @@ call_my_agent() {
         
         # Return focus to the first pane (opencode)
         tmux select-pane -t "$session_name":0.0
+
+        # Preserve each argument safely while passing the command through tmux's
+        # shell-command interface. Start only after the pane layout is settled.
+        printf -v opencode_command '%q ' opencode "$@"
+        tmux respawn-pane -k -t "$session_name":0.0 "${opencode_command% }"
     fi
     
     # Attach to the session

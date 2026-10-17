@@ -94,7 +94,13 @@ def container_workdir(cwd: Path) -> Path:
     return CONTAINER_HOME / cwd.name
 
 
-def to_dockerfile(dirs_to_mount: list[MountPath]) -> str:
+def to_dockerfile(
+    dirs_to_mount: list[MountPath], uid: int | None = None, gid: int | None = None
+) -> str:
+    if uid is None:
+        uid = os.getuid()
+    if gid is None:
+        gid = os.getgid()
     brewfile_path = CONTAINER_HOME / ".Brewfile"
     return f"""# syntax=docker/dockerfile:1
 FROM homebrew/brew:latest
@@ -105,23 +111,28 @@ FROM homebrew/brew:latest
     USER root
 
     RUN usermod -u $UID linuxbrew && usermod -aG $GID linuxbrew
-    # Make the brew cache mount writable by the linuxbrew user, ownership persists in the mount
-    RUN --mount=type=cache,target={BREW_CACHE_DIR} chown -R linuxbrew:linuxbrew {BREW_CACHE_DIR}
-
-    USER linuxbrew
-
     # Bump this arg to force only the brew layer (and later) to rebuild,
     # keeping the base image and user setup cached. --no-cache remains the full nuke.
     ARG BREW_REFRESH=0
+    # Make the brew cache mount writable by the linuxbrew user. BuildKit cache
+    # mounts persist across builds and are created root-owned, so own the cache
+    # explicitly via the mount uid/gid and repair any pre-existing root-owned
+    # cache. Referencing BREW_REFRESH makes this re-run on every --rebuild.
+    RUN --mount=type=cache,target={BREW_CACHE_DIR},uid={uid},gid={gid} \\
+        echo "brew cache refresh: $BREW_REFRESH" \\
+        && chown -R linuxbrew:linuxbrew {BREW_CACHE_DIR}
+
+    USER linuxbrew
+
     # Install dependencies from Brewfile, keeping the download cache across rebuilds
     COPY Brewfile {brewfile_path}
-    RUN --mount=type=cache,target={BREW_CACHE_DIR} \\
+    RUN --mount=type=cache,target={BREW_CACHE_DIR},uid={uid},gid={gid} \\
         echo "brew refresh: $BREW_REFRESH" \\
         && brew update \\
         && brew bundle install --file {brewfile_path}
 
     # Needed because otherwise the intermediate directories are owned by root and the agent user can't write to them
-    RUN {join_but_not_last([p.make_dir() for p in dirs_to_mount], " \\ && ")}
+    RUN {join_but_not_last([p.make_dir() for p in dirs_to_mount], " && ")}
 
     COPY assets/agent-entrypoint.sh {CONTAINER_HOME}/agent-entrypoint.sh
     COPY assets/opencode-tmux.sh {CONTAINER_HOME}/opencode-tmux.sh
@@ -261,7 +272,7 @@ def run_agent(
         build_image(
             uid=uid,
             gid=gid,
-            dockerfile=to_dockerfile(mount_paths),
+            dockerfile=to_dockerfile(mount_paths, uid=uid, gid=gid),
             no_cache=no_cache,
             refresh=rebuild,
         )
