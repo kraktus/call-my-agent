@@ -19,7 +19,8 @@ from typing import List, Optional, Any
 from . import REPO_DIR, log, HOME
 
 # Constants
-IMAGE_NAME = "kraktus/call-my-agent"
+LOCAL_IMAGE_NAME = "call-my-agent"
+PUBLISHED_IMAGE_NAME = "ghcr.io/kraktus/call-my-agent:latest"
 OPENCODE_CONFIG_DIR = ".config/opencode/"
 OPENCODE_SHARE_DIR = ".local/share/opencode"
 
@@ -175,7 +176,7 @@ def random_string(length: int):
 def build_image(
     uid: int, gid: int, dockerfile: str, no_cache: bool = False, refresh: bool = False
 ):
-    log.info(f"Building Docker image {IMAGE_NAME} with u:{uid} g:{gid}...")
+    log.info(f"Building local Docker image {LOCAL_IMAGE_NAME} with u:{uid} g:{gid}...")
     cmd = [
         "docker",
         "build",
@@ -195,7 +196,7 @@ def build_image(
             "-",
             str(REPO_DIR),
             "-t",
-            IMAGE_NAME,
+            LOCAL_IMAGE_NAME,
         ]
     )
     run(
@@ -203,12 +204,22 @@ def build_image(
         input=dockerfile,
         env={**os.environ, "DOCKER_BUILDKIT": "1"},
     )
-    log.info(f"Builf of {IMAGE_NAME} successful")
+    log.info(f"Build of {LOCAL_IMAGE_NAME} successful")
 
 
-def image_already_exists() -> bool:
-    res = run(["docker", "images", "-q", IMAGE_NAME], check=False)
-    return res != ""
+def image_already_exists(image: str) -> bool:
+    res = run(["docker", "images", "-q", image], check=False, capture_output=True)
+    return bool(res.stdout.strip())
+
+
+def pull_image(image: str) -> None:
+    log.info(f"Pulling Docker image {image}...")
+    res = run(["docker", "pull", image], check=False)
+    if res.returncode != 0:
+        raise RuntimeError(
+            f"Could not pull {image}. If the GHCR package is private, run "
+            "`docker login ghcr.io` first, or pass --local to build the image locally."
+        )
 
 
 def port_args(ports: list[int]) -> list[str]:
@@ -228,13 +239,13 @@ def run_container(
     binds: list[Bind],
     workdir: Path,
     agent_args: list[str],
+    image: str,
     ports: list[int] | None = None,
 ) -> None:
     container_name = f"call-my-agent-{random_string(5)}"
     binds_args = list(chain.from_iterable(bind.to_docker_arg() for bind in binds))
     publish_args = port_args(ports or [])
     env_args = ["--env", f"TERM={os.environ['TERM']}"] if "TERM" in os.environ else []
-    print(binds_args)
     run(
         [
             "docker",
@@ -248,7 +259,7 @@ def run_container(
             *binds_args,
             *publish_args,
             *env_args,
-            IMAGE_NAME,
+            image,
             *agent_args,
         ],
         check=False,
@@ -261,6 +272,7 @@ def run_agent(
     uid: int,
     gid: int,
     agent_args: list[str] | None,
+    local: bool = False,
     rebuild: bool = False,
     no_cache: bool = False,
     ports: list[int] | None = None,
@@ -268,16 +280,23 @@ def run_agent(
     mount_paths = get_mount_paths()
     if agent_args is None:
         agent_args = []
-    if rebuild or no_cache or not image_already_exists():
-        build_image(
-            uid=uid,
-            gid=gid,
-            dockerfile=to_dockerfile(mount_paths, uid=uid, gid=gid),
-            no_cache=no_cache,
-            refresh=rebuild,
-        )
+
+    # --rebuild and --no-cache only make sense for a locally built image.
+    if local or rebuild or no_cache:
+        if rebuild or no_cache or not image_already_exists(LOCAL_IMAGE_NAME):
+            build_image(
+                uid=uid,
+                gid=gid,
+                dockerfile=to_dockerfile(mount_paths, uid=uid, gid=gid),
+                no_cache=no_cache,
+                refresh=rebuild,
+            )
+        else:
+            log.info(f"Using existing local image {LOCAL_IMAGE_NAME}")
+        image = LOCAL_IMAGE_NAME
     else:
-        log.info(f"Using existing image {IMAGE_NAME}")
+        pull_image(PUBLISHED_IMAGE_NAME)
+        image = PUBLISHED_IMAGE_NAME
 
     # Config mounts
     binds = [Bind(source=cwd, target=container_workdir(cwd))]
@@ -299,5 +318,6 @@ def run_agent(
         binds=binds,
         workdir=container_workdir(cwd),
         agent_args=agent_args,
+        image=image,
         ports=ports,
     )

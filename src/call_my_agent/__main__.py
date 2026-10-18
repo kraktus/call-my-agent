@@ -36,6 +36,7 @@ def run_cmd(args: argparse.Namespace) -> None:
     cwd = Path.cwd()
     run_agent(
         cwd=cwd,
+        local=args.local,
         rebuild=args.rebuild,
         no_cache=args.no_cache,
         uid=args.uid,
@@ -52,29 +53,37 @@ def gen_cmd(args: argparse.Namespace) -> None:
 def main() -> None:
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Build and use a local Docker image instead of pulling the "
+        "published image from ghcr.io",
+    )
+    parent_parser.add_argument(
         "--rebuild",
         action="store_true",
-        help="Rebuild the Docker image, refreshing the brew packages "
-        "(only the brew layer and later are invalidated, not the base image)",
+        help="Rebuild the local Docker image, refreshing the brew packages "
+        "(implies --local; only the brew layer and later are invalidated, "
+        "not the base image)",
     )
     parent_parser.add_argument(
         "--no-cache",
         action="store_true",
-        help="Do not use cache when building the image (full rebuild)",
+        help="Do not use cache when building the local image "
+        "(implies --local; full rebuild)",
     )
     parent_parser.add_argument(
         "--uid",
         "-u",
         type=int,
         default=os.getuid(),
-        help="User ID to use inside the Docker container",
+        help="User ID to use inside the locally built Docker image",
     )
     parent_parser.add_argument(
         "--gid",
         "-g",
         type=int,
         default=os.getgid(),
-        help="Group ID to use inside the Docker container",
+        help="Group ID to use inside the locally built Docker image",
     )
     parent_parser.add_argument(
         "--agent-args",
