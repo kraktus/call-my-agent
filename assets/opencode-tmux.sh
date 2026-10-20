@@ -18,8 +18,11 @@ call_my_agent() {
     if [ $? != 0 ]; then
         # Create the panes before starting OpenCode. Its startup terminal queries
         # must not race with split-window, or their replies can land in the shell
-        # pane instead of the OpenCode pane.
-        tmux new-session -d -s "$session_name"
+        # pane instead of the OpenCode pane. Remember the first pane by ID: the
+        # mounted ~/.tmux.conf may set base-index/pane-base-index, so a hardcoded
+        # "session:0.0" target would not exist.
+        local opencode_pane
+        opencode_pane=$(tmux new-session -d -P -F '#{pane_id}' -s "$session_name")
         
         # Split the window vertically (creating rows) for standard shell prompts
         tmux split-window -v -t "$session_name"
@@ -36,12 +39,12 @@ call_my_agent() {
         tmux set-option -t "$session_name" status-fg white
         
         # Return focus to the first pane (opencode)
-        tmux select-pane -t "$session_name":0.0
+        tmux select-pane -t "$opencode_pane"
 
         # Preserve each argument safely while passing the command through tmux's
         # shell-command interface. Start only after the pane layout is settled.
         printf -v opencode_command '%q ' opencode "$@"
-        tmux respawn-pane -k -t "$session_name":0.0 "${opencode_command% }"
+        tmux respawn-pane -k -t "$opencode_pane" "${opencode_command% }"
     fi
     
     # Attach to the session
